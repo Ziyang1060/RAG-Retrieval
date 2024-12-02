@@ -66,3 +66,8 @@ fi
 --gradient_accumulation_steps 3 \
 --max_len 512 \
  >./logs/t2ranking_100_example_distill.log &
+
+
+llamafactory-cli webchat \
+    --model_name_or_path /data_train/search/zengziyang/models/Qwen/Qwen2.5-7B-Instruct \
+    --template qwen

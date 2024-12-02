@@ -1,3 +1,6 @@
+output/
+wandb/
+
 *$py.class
 
 # C extensions
