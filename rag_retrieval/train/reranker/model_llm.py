@@ -26,10 +26,14 @@ class LLMDecoder(nn.Module):
 
     def forward(self, batch, labels = None):
         
-        output = self.model(**batch,labels=labels)
+        # output = self.model(**batch,labels=labels)
+        output = self.model(**batch)
 
         if labels is not None:
             logits = output.logits
+            # labels [batch_size]
+            # logits [batch_size, 1]
+            # Todo zzy loss函数的设计
             if self.loss_type=='regression_mse':
                 logits = torch.sigmoid(logits)
                 loss_fct = MSELoss()
@@ -40,7 +44,7 @@ class LLMDecoder(nn.Module):
             elif self.loss_type=='classfication':
                 loss_fct = BCEWithLogitsLoss()
                 loss = loss_fct(logits.squeeze(),labels.squeeze())
-            output.loss=loss
+            output["loss"]=loss
 
         return output
     

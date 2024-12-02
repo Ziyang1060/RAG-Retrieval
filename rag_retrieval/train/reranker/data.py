@@ -71,6 +71,9 @@ class RankerMulabelDataset(Dataset):
         self.max_len = max_len
         self.train_data = self.read_train_data(train_data_path)
         self.tokenizer = tokenizer
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+        # make sure tokenizer is right pad in our logic
+        self.tokenizer.padding_side = "right"
 
 
     def read_train_data(self,train_data_path):
@@ -145,11 +148,12 @@ class LLMRankerDataset(Dataset):
 
         all_batch_pairs=[]
         all_labels=[]
-        #Add a separator:\n between query and doc
         sep = '\n'
         for item in batch:
-            all_batch_pairs.append([item[0]+sep,item[1]])
+            #Add a separator:\n between query and doc
+            all_batch_pairs.append([item[0].strip()+sep,item[1]])
             all_labels.append(item[2])
+        # Todo zzy 输入数据的组织形式
         tokens = self.tokenizer.batch_encode_plus(all_batch_pairs,add_special_tokens=True,padding='max_length',truncation=True,
                             max_length=self.max_len,return_tensors='pt')
         label_batch = torch.tensor(all_labels,dtype=torch.float16)
