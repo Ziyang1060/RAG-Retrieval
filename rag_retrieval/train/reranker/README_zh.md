@@ -24,33 +24,33 @@ pip install -r requirements.txt
 
 对于排序模型，我们支持如下的标准数据格式：
 ```
-{"query": str, "pos": List[str], "neg":List[str], "pos_scores": List, "neg_scores": List}
+{"query": str, "pos": List[str], "neg":List[str], "pos_scores": List[int|float], "neg_scores": List[int|float]}
 ```
-- `pos` 为 query 下所有的正样本。(当蒸馏或者训练数据是多级标签时，也可以是正负样本)
+- `pos` 为 query 下所有的正样本。
 - `neg` 为 query 下所有的负样本。
-- `pos_scores` 为 query 下所有正样本对应的得分。(当蒸馏或者数据是多级标签时，也可以是正负样本的得分)
-- `neg_scores` 为 query 下所有负样本对应的得分。
+- `pos_scores` 为 query 下所有正样本对应的标注得分。
+- `neg_scores` 为 query 下所有负样本对应的标注得分。
 
 
 对于排序模型，支持以下几种数据进行微调：
 
-- 二分类数据：当标注数据中query和doc的相关性为二分类数据，即 label 只存在 0 和 1 时，可参考 [t2rank_100.jsonl](../../../example_data/t2rank_100.jsonl) 文件。
+- 二级标签数据：当标注数据中 query 和 doc 的相关性为二元标签，即 label 只存在 0 和 1 时，可参考 [t2rank_100.jsonl](../../../example_data/t2rank_100.jsonl) 文件。
 ```
 {"query": str, "pos": List[str], "neg":List[str]}
 ```
-对于这种数据，在训练中，我们采用二分类交叉熵损失 `Binary Cross Entropy`来进行训练。在默认情况下，我们会把 query 和正例组成 pair，分数为 1；query 和负例组成 pair，分数为 0。在预测时，模型最终的预测分数为模型输出的 logit，后续可以经过 sigmoid 归一化为 0-1 区间。
+在默认情况下，我们会把 query 和正例组成 pair，分数为 1；query 和负例组成 pair，分数为 0。
 
-- 多级标签数据：当标注数据中query和doc的相关性为多分类数据，即 label 为多级标签，（可能等于 0,1,2 等）,用户可以在pos_scores中指定相关性的级别。此时数据集内部会自动将离散的 label 均匀放缩到 0-1 分数区间中。例如数据集中存在三级标签（0，1，2），那么 label 0: 0，label 1: 0.5，label 2: 1
+- 多级标签数据：当标注数据中query和doc的相关性为多级标签（即为 0,1,2,3 等）,用户可以在 `pos_scores` 中指定正例的相关性级别。此时数据集内部会自动将多级 label 均匀放缩到 0-1 分数区间中。例如数据集中存在三级标签（0，1，2），那么 label 0: 0，label 1: 0.5，label 2: 1。 `neg_scores` 默认均为 0（min label）。
 ```
-{"query": str, "pos": List[str], "pos_scores": List[int|float]}
+{"query": str, "pos": List[str], "neg":List[str], "pos_scores": List[int]}
 ```
-对于这种数据，用户在设置数据集参数的时候需要手动指定 max label 和 min label（初始条件下 max label 默认为 1，min label 默认为 0）。在训练中，我们采用均方损失 `MSE` 或者soft label 下的二分类交叉熵损失 `Binary Cross Entropy`来进行训练。
+对于这种数据，用户在设置数据集参数的时候需要手动指定 max label 和 min label（初始条件下 max label 默认为 1，min label 默认为 0）。
 
-- 蒸馏数据：用户可以直接使用 `pos`（同时包含正样本和负样本）和 `pos_scores` 来构建数据集(`pos_scores` 为范围 0-1 的连续分数)，可参考 [t2rank_100.distill.standard.jsonl](../../../example_data/t2rank_100.distill.standard.jsonl) 文件。
+- 蒸馏数据：用户可以直接使用 `pos_scores` 和 `neg_scores` 来注明正例和负例样本在其他模型下范围 0-1 的连续分数，可参考 [t2rank_100.distill.standard.jsonl](../../../example_data/t2rank_100.distill.standard.jsonl) 文件。
 ```
-{"query": str, "pos": List[str], "pos_scores": List[int|float]}
+{"query": str, "pos": List[str], "neg":List[str], "pos_scores": List[float], "neg_socres": List[float]}
 ```
-对于这种数据,在训练中，我们采用均方损失 `MSE` 或者soft label 下的二分类交叉熵损失 `Binary Cross Entropy`来进行训练。在 [examples/distill_llm_to_bert](../../../examples/distill_llm_to_bert) 目录下可以找到用 LLM 进行相关性打分标注的代码。
+在 [examples/distill_llm_to_bert](../../../examples/distill_llm_to_bert) 目录下可以找到用 LLM 进行相关性打分标注的代码。
 
 
 # 训练
@@ -114,7 +114,7 @@ train_reranker.py \
 
 训练方面：
 - `output_dir`：训练过程中保存的 checkpoint 和最终模型的目录
-- `loss_type`：从 point_ce（交叉熵损失）和 point_mse（均方损失） 中选择
+- `loss_type`："pointwise_bce" or "pointwise_mse" or "pairwise_hinge" or "listwise_ce"
 - `epoch`：模型在训练数据集上训练的轮数
 - `lr`：学习率，一般1e-5到5e-5之间
 - `batch_size`：每个 batch 中 query-doc pair 对的数量
